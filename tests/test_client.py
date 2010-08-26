@@ -4,6 +4,7 @@ import unittest
 import simplejson as json
 import geohash
 import random
+import socket
 from simplegeo import Client, Record, APIError
 
 MY_OAUTH_KEY = 'MY_OAUTH_KEY'
@@ -18,7 +19,7 @@ if MY_OAUTH_KEY == 'MY_OAUTH_KEY' or \
 API_VERSION = '0.1'
 API_HOST = 'api.simplegeo.com'
 API_PORT = 80
-
+INVALID_API_PORT = 4280
 
 TESTING_LAT = '37.7481624945'
 TESTING_LON = '-122.433287165'
@@ -208,6 +209,11 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(density_results.get('properties').get('dayname'), 'mon')
         self.assertEqual(density_results.get('properties').get('hour'), 0)
         self.assertCorrectCoordinates(density_results.get('geometry').get('coordinates'))
+
+    def test_connection_refused(self):
+        self.client = Client(MY_OAUTH_KEY, MY_OAUTH_SECRET, API_VERSION, API_HOST, INVALID_API_PORT)
+
+        self.assertRaises(socket.error, lambda: self.client.get_layer(TESTING_LAYER))
 
     # Utility functions
 

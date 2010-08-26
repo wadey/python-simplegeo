@@ -2,6 +2,8 @@ import time
 import urllib
 import oauth2 as oauth
 import simplejson as json
+import socket
+import errno
 from httplib2 import Http
 from urlparse import urljoin
 
@@ -234,7 +236,7 @@ class Client(object):
         headers = request.to_header(self.realm)
         headers['User-Agent'] = 'SimpleGeo Client v%s' % __version__
 
-        resp, content = self.http.request(endpoint, method, body=body, headers=headers)
+        resp, content = self._http_request(endpoint, method, body, headers)
 
         if self.debug:
             print resp
@@ -256,3 +258,27 @@ class Client(object):
 
         return content
 
+    def _http_request(self, endpoint, method, body, headers):
+        try:
+            return self.http.request(endpoint, method,
+                                     body=body, headers=headers)
+        except socket.error, e:
+            # Connection was refused, try one more time
+            if getattr(e, 'errno', e.args[0]) == errno.ECONNREFUSED:
+                self.http = Http()
+                return self.http.request(endpoint, method,
+                                         body=body, headers=headers)
+            raise e
+        except AttributeError, e:
+            # See this bug: http://code.google.com/p/httplib2/issues/detail?id=62
+            if str(e) == "'NoneType' object has no attribute 'makefile'":
+                # Connection was refused, try one more time
+                self.http = Http()
+                try:
+                    return self.http.request(endpoint, method,
+                                             body=body, headers=headers)
+                except AttributeError, e2:
+                    if str(e2) == "'NoneType' object has no attribute 'makefile'":
+                        raise socket.error(errno.ECONNREFUSED, "Connection refused") 
+                    raise e2
+            raise e
