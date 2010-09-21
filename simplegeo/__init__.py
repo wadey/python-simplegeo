@@ -110,6 +110,7 @@ class Client(object):
     endpoints = {
         'record': 'records/%(layer)s/%(id)s.json',
         'records': 'records/%(layer)s/%(ids)s.json',
+        'record_annotations': 'records/%(layer)s/%(id)s/annotations.json',
         'add_records': 'records/%(layer)s.json',
         'history': 'records/%(layer)s/%(id)s/history.json',
         'nearby': 'records/%(layer)s/nearby/%(arg)s.json',
@@ -169,14 +170,33 @@ class Client(object):
         endpoint = self.endpoint('record', layer=layer, id=id)
         self._request(endpoint, "DELETE")
 
-    def get_record(self, layer, id):
+    def get_record(self, layer, id, **kwargs):
         endpoint = self.endpoint('record', layer=layer, id=id)
-        return self._request(endpoint, "GET")
+        return self._request(endpoint, "GET", data=kwargs)
 
-    def get_records(self, layer, ids):
+    def get_records(self, layer, ids, **kwargs):
         endpoint = self.endpoint('records', layer=layer, ids=','.join(ids))
-        features = self._request(endpoint, "GET")
+        features = self._request(endpoint, "GET", data=kwargs)
         return features.get('features') or []
+
+    def add_annotations(self, layer, id, annotations={}, **kwargs):
+        """Annotations can either be passed in as a dict, or as kwargs"""
+        kwargs.update(annotations)
+        assert len(kwargs) > 0
+
+        endpoint = self.endpoint('record_annotations', layer=layer, id=id)
+        return self._request(endpoint, "POST", json.dumps(kwargs))
+
+    def get_annotations(self, layer, id, **kwargs):
+        """Note, the annotations will also be returned in get_record,
+        this method is mostly provided for completeness 
+        """
+        endpoint = self.endpoint('record_annotations', layer=layer, id=id)
+        return self._request(endpoint, "GET", data=kwargs)
+
+    def delete_annotations(self, layer, id):
+        endpoint = self.endpoint('record_annotations', layer=layer, id=id)
+        self._request(endpoint, "DELETE")
 
     def get_history(self, layer, id, **kwargs):
         endpoint = self.endpoint('history', layer=layer, id=id)
